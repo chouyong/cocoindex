@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local Ollama Query Report</title>
+  <style>
+    :root {
+      --bg: #f2efe8;
+      --panel: #fffdf8;
+      --ink: #1d1a15;
+      --muted: #6f6558;
+      --accent: #0f766e;
+      --accent-soft: #d9f3ef;
+      --border: #ded6c9;
+      --mark: #ffe08a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #f7d9b8 0, transparent 28%),
+        radial-gradient(circle at top right, #d5efe7 0, transparent 24%),
+        var(--bg);
+    }
+    .page {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 40px 24px 60px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #fffdf8, #f7f1e5);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 18px 40px rgba(29, 26, 21, 0.08);
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
+      line-height: 1.1;
+    }
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .meta-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+    .meta-card .label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .meta-card .value {
+      font-size: 16px;
+      font-weight: 600;
+      word-break: break-word;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .summary-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+    }
+    .summary-panel h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+    .summary-panel p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tag-list span {
+      background: #eef8f6;
+      color: var(--accent);
+      border: 1px solid #c6e8e2;
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .results {
+      display: grid;
+      gap: 16px;
+    }
+    .result-card {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 16px 36px rgba(29, 26, 21, 0.06);
+    }
+    .result-rank {
+      align-self: start;
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--accent);
+      color: white;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .result-body h2 {
+      margin: 0 0 10px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .meta span {
+      background: #f4eee3;
+      border-radius: 999px;
+      padding: 6px 10px;
+    }
+    .preview {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 14px;
+      padding: 14px 16px;
+      line-height: 1.7;
+      font-size: 15px;
+    }
+    mark {
+      background: var(--mark);
+      padding: 0 0.12em;
+      border-radius: 0.2em;
+    }
+    details {
+      margin-top: 14px;
+    }
+    summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #f7f1e5;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 10px;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow: auto;
+    }
+    .empty {
+      background: var(--panel);
+      border: 1px dashed var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      color: var(--muted);
+    }
+    @media (max-width: 700px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+      .result-card {
+        grid-template-columns: 1fr;
+      }
+      .result-rank {
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <h1>Local Ollama Query Report</h1>
+      <p>Static HTML report generated from local CocoIndex JSON embeddings.</p>
+      <div class="meta-grid">
+        <div class="meta-card"><span class="label">Generated At</span><span class="value">2026-05-17 19:37:04</span></div><div class="meta-card"><span class="label">Query</span><span class="value">vector search</span></div><div class="meta-card"><span class="label">Top K</span><span class="value">2</span></div><div class="meta-card"><span class="label">Indexed Chunks Searched</span><span class="value">4</span></div><div class="meta-card"><span class="label">Matching Chunks After Filter</span><span class="value">1</span></div><div class="meta-card"><span class="label">File Filter</span><span class="value">vector</span></div><div class="meta-card"><span class="label">Ollama API Base</span><span class="value">http://127.0.0.1:11434</span></div><div class="meta-card"><span class="label">Embed Model</span><span class="value">ollama/nomic-embed-text</span></div><div class="meta-card"><span class="label">Embedding JSON Directory</span><span class="value">output_embeddings</span></div>
+      </div>
+      <div class="summary-grid">
+        <section class="summary-panel">
+          <h3>Query Summary</h3>
+          <p>This report was generated from local JSON embeddings using local Ollama query embedding plus cosine similarity ranking. The file filter narrows the candidate set before scoring.</p>
+        </section>
+        <section class="summary-panel">
+          <h3>Query Terms Highlighted</h3>
+          <div class="tag-list"><span>vector</span><span>search</span></div>
+        </section>
+      </div>
+    </section>
+    <section class="results">
+      
+            <article class="result-card">
+              <div class="result-rank">1</div>
+              <div class="result-body">
+                <h2>data\vector_search_demo.md</h2>
+                <p class="meta">
+                  <span>rank=1</span>
+                  <span>score=0.7222</span>
+                  <span>chunk=0..367</span>
+                  <span>dim=768</span>
+                </p>
+                <div class="preview"># <mark>Vector</mark> <mark>Search</mark> Demo  <mark>Vector</mark> <mark>search</mark> compares a query embedding with stored document embeddings and ranks the nearest matches.  This local demo stores <mark>vector</mark>s as JSON files and uses cosine similarity for retrieval without Postgres, Qdrant, or any extern...</div>
+                <details>
+                  <summary>Full Text</summary>
+                  <pre># Vector Search Demo
+
+Vector search compares a query embedding with stored document embeddings and ranks the nearest matches.
+
+This local demo stores vectors as JSON files and uses cosine similarity for retrieval without Postgres, Qdrant, or any external vector service.
+
+This file should rank for searches about vector search, cosine similarity, and local retrieval.</pre>
+                </details>
+              </div>
+            </article>
+            
+    </section>
+  </main>
+</body>
+</html>

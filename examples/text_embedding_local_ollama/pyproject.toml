@@ -1,0 +1,13 @@
+[project]
+name = "text-embedding-local-ollama"
+version = "0.1.0"
+description = "CocoIndex v1 example: embed local markdown files through local Ollama and write JSON locally."
+requires-python = ">=3.11"
+dependencies = [
+    "cocoindex[litellm]>=1.0.4",
+    "numpy",
+    "python-dotenv>=1.0.1",
+]
+
+[tool.setuptools]
+packages = []

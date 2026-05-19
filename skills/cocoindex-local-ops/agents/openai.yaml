@@ -1,0 +1,8 @@
+﻿version: 1
+interface:
+  display_name: CocoIndex Local Ops
+  short_description: 面向本地 CocoIndex 仓库的安装、运行、日志和进程操作技能。
+  default_prompt: >-
+    请按本地运维视角处理 D:\knowledgeBase\cocoindex\cocoindex_repo 中的 CocoIndex
+    仓库任务，优先确认它是 CLI/App 项目而不是传统 Web 服务项目，并给出可直接执行的
+    安装、运行、live 启动、日志检查或停止进程操作。

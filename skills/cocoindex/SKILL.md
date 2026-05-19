@@ -62,6 +62,53 @@ pip install -e .
 cocoindex update main.py
 ```
 
+## Local Ollama On This Machine
+
+When the task benefits from a local embedding model instead of a cloud API, this workspace already has a verified Windows `Ollama` setup:
+
+- API base: `http://127.0.0.1:11434`
+- Verified model: `ollama/nomic-embed-text`
+- `ollama.exe` location: `D:\knowledgeBase\Ollama\ollama.exe`
+- Model/data directory: `D:\knowledgeBase\.ollama`
+
+Check availability before changing pipeline code:
+
+```powershell
+ollama --version
+ollama list
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:11434/api/tags
+```
+
+If the model is missing:
+
+```powershell
+ollama pull nomic-embed-text
+```
+
+Prefer the local Ollama path for quick, private embedding experiments. Do not assume an API key is required for this path.
+
+In this repository, the smallest verified end-to-end example for that path is:
+
+- `examples/text_embedding_local_ollama/main.py`
+
+It reads local Markdown files, embeds them through local Ollama, and writes JSON output locally instead of requiring a vector database.
+It also supports local similarity search by loading those JSON vectors back and computing cosine similarity without any external search service.
+For quick local evaluation, the same script can also run an interactive multi-turn query loop over those JSON vectors.
+For demo-friendly local workflows, prefer adding a few topic-diverse Markdown files so Top K behavior and ranking across multiple files are visible immediately.
+For a stronger local demo, add filename filtering and Markdown report export before introducing a real vector database or UI layer.
+For shareable local outputs, the same demo can also export a static HTML query report page directly from a single-shot query or an interactive session.
+If the user wants a browser-based local experience without adding a framework, prefer a tiny standard-library Web UI bound to `127.0.0.1` that reuses the same local query function over JSON embedding files.
+For readability during demos, add a lightweight lexical highlight layer on top of semantic retrieval results, but clearly describe it as preview-only rather than model-attribution.
+Prefer simple, explicit markers such as `[[term]]` in terminal output and `**term**` in Markdown reports so users can distinguish highlight rendering from the underlying retrieval score.
+For HTML exports, prefer `<mark>` highlighting plus a compact metadata summary and expandable full-text sections so the report remains static and browser-openable without introducing a local server.
+For a local Web UI, prefer keeping the controls minimal: query text, Top K, filename filter, query summary, and result cards with expandable text.
+For a stronger local Web UI demo, add direct download links for the current result set and populate the filename filter from indexed source-file values instead of making the user guess filenames.
+When local Web UI requests call Ollama repeatedly, prefer a long-lived asyncio loop rather than per-request `asyncio.run(...)` so batching-based embedders do not retain references to closed event loops.
+For smoother drill-down, make each result card's source-file tag clickable so the UI can jump directly into a file-filtered view using the current query and Top K.
+For exported artifacts, prefer filenames that include a normalized query stem plus timestamp so downloaded reports are easier to distinguish later.
+For filtered local Web UI states, prefer showing an explicit filtered-result-count badge so users can see immediately that ranking is scoped.
+If the user wants comparison instead of just narrowing, make that badge clickable and render an appended unfiltered baseline section for the same query and Top K rather than replacing the filtered results.
+
 ## Core Concepts
 
 ### 1. Apps
@@ -374,6 +421,20 @@ from cocoindex.ops.sentence_transformers import SentenceTransformerEmbedder
 embedder = SentenceTransformerEmbedder("sentence-transformers/all-MiniLM-L6-v2")
 embedding = await embedder.embed(text)  # Returns NDArray
 ```
+
+If the task uses LiteLLM-backed embeddings with a local model, use:
+
+```python
+from cocoindex.ops.litellm import LiteLLMEmbedder
+
+embedder = LiteLLMEmbedder(
+    "ollama/nomic-embed-text",
+    api_base="http://127.0.0.1:11434",
+)
+```
+
+For the local-only minimal pattern, prefer writing embedding results to files first, then add a vector database only after the Ollama path is confirmed working.
+For the next step after indexing, prefer a local JSON-vector query path before introducing Postgres/Qdrant/LanceDB.
 
 ## CLI Commands
 
