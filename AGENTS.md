@@ -986,3 +986,102 @@ cocoindex update .\main.py
 3. 若只是验证库可运行，优先用 `quickstart_demo` 或 `examples\files_transform`
 4. 若任务涉及本地 embedding、LiteLLM、Ollama、检索交互或演示页面，优先从 `examples\text_embedding_local_ollama` 开始
 5. 若需要仓库级知识回填，优先写入本文件 `AGENTS.md`
+
+## 13. 2026-05-23 fork 同步与 SSH 修复记录
+
+本节记录一次真实发生的“本地已拉到上游更新，但 GitHub fork 页面仍落后”的排障与修复过程，便于后续代理直接复用。
+
+### 13.1 现象与结论
+
+- 现象：
+  - 上游仓库 `https://github.com/cocoindex-io/cocoindex` 已显示 4 小时前新提交（`#2004`）。
+  - 个人 fork `https://github.com/chouyong/cocoindex` 页面仍显示旧状态（2 天前）。
+- 结论：
+  - 本地仓库已包含上游新提交，但 `fork/main` 尚未同步。
+  - 根因不是“本地 pull 失败”，而是“fork 远端分支历史分叉 + Windows 本地锁文件 + HTTPS 凭据链路异常”。
+
+### 13.2 当次关键状态（已验证）
+
+- 本地分支：`main`
+- 远端：
+  - `origin = https://github.com/cocoindex-io/cocoindex.git`
+  - `fork = https://github.com/chouyong/cocoindex.git`（后改为 SSH）
+- 关键提交：
+  - 上游目标提交：`a8d01621`（`refactor(engine): scope GC-sweep rtxn to list_tombstones only (#2004)`）
+  - 本地新增提交在 rebase 过程中重写过 hash（旧 `464641ae` -> 新 `d460dd22`），属正常现象。
+
+### 13.3 遇到的两个高频阻塞
+
+1. `.git` 锁文件阻塞（TortoiseGit 缓存进程）
+- 典型报错：
+  - `could not create temporary .git/rebase-merge: Permission denied`
+  - `cannot open '.git/FETCH_HEAD': Permission denied`
+- 诱因：
+  - `TGitCache.exe` 持续占用仓库索引/状态文件。
+
+2. Windows HTTPS 凭据异常
+- 典型报错：
+  - `schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS (0x8009030E)`
+- 影响：
+  - `git push` 到 `https://github.com/...` 失败。
+
+### 13.4 最终采用的稳定修复路径
+
+1. 配置 SSH 认证（绕过 HTTPS 凭据问题）
+
+```powershell
+ssh-keygen -t ed25519 -C "zhouy@local-cocoindex" -f "$env:USERPROFILE\.ssh\id_ed25519" -N '""'
+Get-Content "$env:USERPROFILE\.ssh\id_ed25519.pub"
+```
+
+将公钥添加到 GitHub：`Settings -> SSH and GPG keys -> New SSH key`，并选择 `Authentication Key`。
+
+2. 把 `fork` 远端改为 SSH
+
+```powershell
+git remote set-url fork git@github.com:chouyong/cocoindex.git
+ssh -T git@github.com
+```
+
+3. 同步分叉历史并推送
+
+```powershell
+git fetch fork
+git rebase fork/main
+git push fork main
+```
+
+4. 若 SSH 读取 `known_hosts` 仍偶发权限问题，可临时指定：
+
+```powershell
+$env:GIT_SSH_COMMAND='ssh -o UserKnownHostsFile=C:/Users/zhouy/.ssh/known_hosts -o StrictHostKeyChecking=accept-new'
+git push fork main
+```
+
+5. 若 `.git` 再次被 TortoiseGit 占用，先关闭 GUI；必要时结束进程：
+
+```powershell
+taskkill /PID <TGitCache_PID> /F
+```
+
+### 13.5 本次修复后的结果
+
+- `ssh -T git@github.com` 已通过认证。
+- `fork/main` 已成功 push 到新头部提交：
+  - `f1d7a6f1 refactor(engine): scope GC-sweep rtxn to list_tombstones only (#2004)`
+- fork 页面可对齐显示上游近期变更（包含 `#2004`）。
+
+### 13.6 后续代理建议（同步 fork 标准流程）
+
+建议优先走 CLI + SSH，不要依赖 GUI Pull 按钮：
+
+```powershell
+cd D:\knowledgeBase\cocoindex\cocoindex_repo
+git fetch origin
+git rebase origin/main
+git fetch fork
+git rebase fork/main
+git push fork main
+```
+
+如果出现 `Permission denied` 且进程里有 `TGitCache.exe`，先释放锁再继续，不要直接 `reset --hard`。
